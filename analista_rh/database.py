@@ -28,7 +28,9 @@ def init_db():
                 username TEXT PRIMARY KEY,
                 hashed_password TEXT NOT NULL,
                 email TEXT,
-                telefone TEXT
+                telefone TEXT,
+                role TEXT DEFAULT 'user',
+                status TEXT DEFAULT 'pending'
             )
         """)
         
@@ -42,10 +44,10 @@ def init_db():
             hashed_pass = get_password_hash(default_pass)
             
             cursor.execute(
-                "INSERT INTO users (username, hashed_password, email, telefone) VALUES (?, ?, ?, ?)",
+                "INSERT INTO users (username, hashed_password, email, telefone, role, status) VALUES (?, ?, ?, ?, 'admin', 'active')",
                 (default_user, hashed_pass, "admin@empresa.com", "(00) 00000-0000")
             )
-            logger.info("Banco de dados SQLite inicializado com usuário padrão do .env.")
+            logger.info("Banco de dados SQLite inicializado com usuário padrão do .env (Admin).")
             
         conn.commit()
     except Exception as e:

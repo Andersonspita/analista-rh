@@ -97,7 +97,9 @@ def extrair_curriculo(texto_bruto: str) -> CurriculoEstruturado:
         _tratar_erro_openai(exc, "extração de currículo")
 
 
-def gerar_score_ats(curriculo: CurriculoEstruturado, descricao_vaga: str) -> AnaliseATS:
+from typing import Union
+
+def gerar_score_ats(curriculo: Union[CurriculoEstruturado, CurriculoOtimizado], descricao_vaga: str) -> AnaliseATS:
     """
     Usa gpt-4o-mini para comparar currículo x vaga e gerar score estruturado.
     """
@@ -168,6 +170,7 @@ DADOS ORIGINAIS DO CANDIDATO:
 
 Reescreva o resumo profissional e as descrições de cada experiência.
 Mantenha cargo, empresa e período exatamente como estão — apenas reescreva as descrições.
+COPIE de volta, exatamente como estão, os campos nome_completo, email, telefone, links, habilidades_tecnicas, formacao_academica e cursos_certificacoes para o resultado final, não perca nenhuma informação.
 """
     try:
         resposta = get_openai_client().beta.chat.completions.parse(

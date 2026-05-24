@@ -10,6 +10,8 @@ class LoginRequest(BaseModel):
     username: str
     password: str
 
+class GoogleLoginRequest(BaseModel):
+    credential: str
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -24,6 +26,8 @@ class UserProfile(BaseModel):
     username: str
     email: Optional[str] = None
     telefone: Optional[str] = None
+    role: str = "user"
+    status: str = "pending"
 
 class UserUpdate(BaseModel):
     email: Optional[str] = None
@@ -33,12 +37,21 @@ class UserUpdate(BaseModel):
 # ──────────────────────────────────────────────
 # CURRÍCULO — ENTRADA
 # ──────────────────────────────────────────────
+class FormacaoAcademica(BaseModel):
+    curso: str
+    instituicao: str
+    periodo: str
+
+class CursoCertificacao(BaseModel):
+    nome: str
+    instituicao: str
+    periodo: Optional[str] = None
+
 class ExperienciaProfissional(BaseModel):
     cargo: str
     empresa: str
     periodo: str
     descricao: str
-
 
 class CurriculoEstruturado(BaseModel):
     nome_completo: str
@@ -47,6 +60,8 @@ class CurriculoEstruturado(BaseModel):
     links: List[str] = Field(default_factory=list)
     habilidades_tecnicas: List[str] = Field(default_factory=list)
     experiencias: List[ExperienciaProfissional] = Field(default_factory=list)
+    formacao_academica: List[FormacaoAcademica] = Field(default_factory=list)
+    cursos_certificacoes: List[CursoCertificacao] = Field(default_factory=list)
     resumo_profissional: str
 
 
@@ -77,6 +92,13 @@ class ExperienciaOtimizada(BaseModel):
 
 
 class CurriculoOtimizado(BaseModel):
+    nome_completo: str
+    email: Optional[str] = None
+    telefone: Optional[str] = None
+    links: List[str] = Field(default_factory=list)
+    habilidades_tecnicas: List[str] = Field(default_factory=list)
+    formacao_academica: List[FormacaoAcademica] = Field(default_factory=list)
+    cursos_certificacoes: List[CursoCertificacao] = Field(default_factory=list)
     resumo_profissional: str = Field(
         description="Resumo profissional reescrito e otimizado para a vaga"
     )
@@ -104,6 +126,7 @@ class RespostaParseResume(BaseModel):
 class RespostaAnalise(BaseModel):
     analise_ats: AnaliseATS
     curriculo_otimizado: CurriculoOtimizado
+    analise_ats_otimizada: AnaliseATS
     meta: MetaResposta
 
 

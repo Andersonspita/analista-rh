@@ -9,28 +9,26 @@ Requer autenticação JWT (Bearer token).
 import logging
 from fastapi import APIRouter, Depends, UploadFile, File
 
-from auth import get_current_user
-from models import RespostaParseResume, MetaResposta
+from auth import get_active_user
+from models import RespostaParseResume, ErroResposta, MetaResposta
 from services.pdf_service import extrair_texto_pdf
 from services.ai_service import extrair_curriculo
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1", tags=["Currículo"])
+router = APIRouter(prefix="/api/v1", tags=["Currículos"])
 
 
 @router.post(
     "/parse-resume",
     response_model=RespostaParseResume,
-    summary="Extrai dados de um currículo PDF",
-    description=(
-        "Recebe um arquivo PDF, extrai o texto e usa IA para estruturar "
-        "os dados do candidato em JSON. Requer autenticação."
-    ),
+    responses={400: {"model": ErroResposta}, 500: {"model": ErroResposta}},
+    summary="Extrai dados estruturados de um PDF de currículo",
+    description="Faz o upload de um arquivo PDF, extrai o texto e utiliza IA para devolver um JSON estruturado.",
 )
 async def parse_resume(
     file: UploadFile = File(..., description="Arquivo PDF do currículo"),
-    current_user: str = Depends(get_current_user),
+    current_user: str = Depends(get_active_user),
 ):
     logger.info("parse-resume | usuário: %s | arquivo: %s", current_user, file.filename)
 

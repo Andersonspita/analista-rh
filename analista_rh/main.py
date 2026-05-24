@@ -134,8 +134,8 @@ async def handler_erro_generico(request: Request, exc: Exception):
 # ──────────────────────────────────────────────
 # ROUTERS
 # ──────────────────────────────────────────────
-from auth import realizar_login
-from models import LoginRequest, TokenResponse
+from auth import realizar_login, realizar_google_login
+from models import LoginRequest, GoogleLoginRequest, TokenResponse
 from routers.resume import router as resume_router
 from routers.analysis import router as analysis_router
 from routers.users import router as users_router
@@ -150,6 +150,15 @@ from routers.users import router as users_router
 )
 async def login(body: LoginRequest):
     return realizar_login(body)
+
+@app.post(
+    "/api/v1/auth/google-login",
+    response_model=TokenResponse,
+    tags=["Autenticação"],
+    summary="Login via Google",
+)
+async def google_login(body: GoogleLoginRequest):
+    return realizar_google_login(body)
 
 
 # Rotas protegidas

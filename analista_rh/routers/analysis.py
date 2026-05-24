@@ -10,7 +10,7 @@ Requer autenticação JWT.
 import logging
 from fastapi import APIRouter, Depends, Body
 
-from auth import get_current_user
+from auth import get_active_user
 from models import (
     CurriculoEstruturado,
     RespostaAnalise,
@@ -36,7 +36,7 @@ router = APIRouter(prefix="/api/v1", tags=["Análise ATS"])
 async def analyze_and_rebuild(
     vaga: str = Body(..., embed=True, description="Texto completo da descrição da vaga"),
     curriculo: CurriculoEstruturado = Body(..., description="JSON retornado pelo /parse-resume"),
-    current_user: str = Depends(get_current_user),
+    current_user: str = Depends(get_active_user),
 ):
     logger.info(
         "analyze-and-rebuild | usuário: %s | candidato: %s",
@@ -50,8 +50,12 @@ async def analyze_and_rebuild(
     # 2. Reescrita estruturada (gpt-4o — qualidade máxima, sem Markdown)
     curriculo_otimizado = reescrever_curriculo(curriculo, analise, vaga)
 
+    # 3. Score ATS do Currículo Otimizado (Prova de Valor)
+    analise_otimizada = gerar_score_ats(curriculo_otimizado, vaga)
+
     return RespostaAnalise(
         analise_ats=analise,
         curriculo_otimizado=curriculo_otimizado,
+        analise_ats_otimizada=analise_otimizada,
         meta=MetaResposta(),
     )

@@ -69,6 +69,11 @@ def _criar_token(dados: dict, expire_hours: int = EXPIRE_HOURS) -> str:
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
+import requests
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+from models import GoogleLoginRequest
+
 # ──────────────────────────────────────────────
 # ENDPOINT DE LOGIN
 # ──────────────────────────────────────────────
@@ -86,6 +91,53 @@ def realizar_login(body: LoginRequest) -> TokenResponse:
     expire_seconds = EXPIRE_HOURS * 3600
     logger.info("Login bem-sucedido: '%s'", body.username)
     return TokenResponse(access_token=token, expires_in=expire_seconds)
+
+
+def realizar_google_login(body: GoogleLoginRequest) -> TokenResponse:
+    """Verifica token do Google, cria usuário se não existir e retorna JWT do sistema."""
+    client_id = os.getenv("GOOGLE_CLIENT_ID")
+    if not client_id:
+        raise HTTPException(status_code=500, detail="Google Client ID não configurado no backend.")
+
+    try:
+        # Validate Google token
+        idinfo = id_token.verify_oauth2_token(body.credential, google_requests.Request(), client_id)
+        email = idinfo['email']
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Check if user exists
+        cursor.execute("SELECT username, role, status FROM users WHERE email = ?", (email,))
+        user = cursor.fetchone()
+        
+        if not user:
+            # Register new user from Google
+            # We use email as username
+            cursor.execute(
+                "INSERT INTO users (username, hashed_password, email, role, status) VALUES (?, ?, ?, 'user', 'pending')",
+                (email, "[OAUTH_GOOGLE]", email)
+            )
+            conn.commit()
+            username = email
+            status_user = 'pending'
+        else:
+            username = user['username']
+            status_user = user['status']
+            
+        conn.close()
+        
+        token = _criar_token({"sub": username})
+        expire_seconds = EXPIRE_HOURS * 3600
+        logger.info("Google Login bem-sucedido: '%s' (Status: %s)", username, status_user)
+        return TokenResponse(access_token=token, expires_in=expire_seconds)
+
+    except ValueError as e:
+        logger.warning(f"Google token inválido: {e}")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token do Google inválido")
+    except Exception as e:
+        logger.error(f"Erro no login do Google: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Erro interno")
 
 
 # ──────────────────────────────────────────────
@@ -116,6 +168,41 @@ def get_current_user(
         raise credenciais_exception
 
     return username
+
+
+def get_active_user(current_user: str = Depends(get_current_user)) -> str:
+    """Verifica se o usuário está ativo no banco de dados."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT status FROM users WHERE username = ?", (current_user,))
+        row = cursor.fetchone()
+        if not row:
+            raise HTTPException(status_code=401, detail="Usuário não encontrado.")
+            
+        status_user = row["status"]
+        if status_user == "pending":
+            raise HTTPException(status_code=403, detail="Sua conta está aguardando aprovação do administrador.")
+        elif status_user == "blocked":
+            raise HTTPException(status_code=403, detail="Sua conta foi bloqueada.")
+    finally:
+        conn.close()
+
+    return current_user
+
+
+def get_current_admin(current_user: str = Depends(get_current_user)) -> str:
+    """Dependency para rotas restritas a administradores."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT role FROM users WHERE username = ?", (current_user,))
+        row = cursor.fetchone()
+        if not row or row["role"] != "admin":
+            raise HTTPException(status_code=403, detail="Acesso negado. Requer privilégios de administrador.")
+    finally:
+        conn.close()
+    return current_user
 
 
 # ──────────────────────────────────────────────
